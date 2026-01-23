@@ -69,7 +69,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 (setq
  backup-by-copying t ; 自动备份
  backup-directory-alist
- '(("." . "~/.backup")) ; 自动备份在目录"~/.backup"下
+ '(("." . "~/.emacs.d/backup")) ; 自动备份在目录"~/.emacs.d/backup"下
  delete-old-versions t ; 自动删除旧的备份文件
  kept-new-versions 3 ; 保留最近的3个备份文件
  kept-old-versions 1 ; 保留最早的1个备份文件
@@ -173,7 +173,9 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   :init
   (global-undo-tree-mode)
   (evil-set-undo-system 'undo-tree)
-  (setq evil-want-fine-undo t))
+  (setq evil-want-fine-undo t)
+  (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo-tree-history")))
+  (make-directory "~/.emacs.d/undo-tree-history" t))
 
 (use-package neotree
   :init
