@@ -75,7 +75,10 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
  kept-old-versions 1 ; 保留最早的1个备份文件
  version-control t) ; 多次备份
 
+(setq-default indent-tabs-mode nil)
+(setq-default tab-width 4)
 (setq-default c-basic-offset 4)
+(setq-default standard-indent 4)
 ;;linux kernel style
 ;;(defun c-lineup-arglist-tabs-only (ignored)
 ;;  "Line up argument lists by tabs, not spaces"
