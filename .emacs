@@ -138,7 +138,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 
 (eval-and-compile
   (setq use-package-always-ensure t) ;不用每个包都手动添加:ensure t关键字
-  (setq use-package-always-defer t) ;默认都是延迟加载，不用每个包都手动添加:defer t
+  (setq use-package-always-defer nil) ;每个包显式声明立即或延迟加载
   (setq use-package-always-demand nil)
   (setq use-package-expand-minimally t)
   (setq use-package-verbose t))
@@ -148,8 +148,10 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 (require 'use-package)
 
 (use-package evil
+  :demand t
   :init
-  (evil-mode 1)
+  (setq evil-want-fine-undo t
+        evil-undo-system 'undo-tree)
   ;;修正:q :wq :x的行为
   ;;(global-set-key [remap evil-quit] 'kill-buffer-and-window)
   (defun save-and-kill-buffer ()
@@ -158,13 +160,25 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
     (kill-buffer-and-window))
   (global-set-key [remap evil-save-and-close] 'save-and-kill-buffer)
   ;;(global-set-key [remap evil-save-modified-and-close] 'save-and-kill-buffer)
-  )
+  :config
+  (evil-mode 1)
+  (defun my-evil-enable-in-startup-buffer (&rest _)
+    "Enable Evil normal state in the Emacs startup screen."
+    (let ((buffer (get-buffer "*GNU Emacs*")))
+      (when buffer
+        (with-current-buffer buffer
+          (evil-local-mode 1)
+          (evil-normal-state)))))
+  (advice-add 'display-startup-screen :after
+              #'my-evil-enable-in-startup-buffer))
 
 (use-package zenburn-theme
+  :demand t
   :init
   (setq zenburn-override-colors-alist
       '(("zenburn-bg" . "#2B2B2B")
   	("zenburn-bg-1" . "#3F3F3F")))
+  :config
   (load-theme 'zenburn t))
 
 ;;(use-package spaceline
@@ -173,17 +187,18 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 ;;  (spaceline-spacemacs-theme))
 
 (use-package undo-tree
+  :after evil
+  :demand t
   :init
-  (global-undo-tree-mode)
-  (evil-set-undo-system 'undo-tree)
-  (setq evil-want-fine-undo t)
   (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo-tree-history")))
-  (make-directory "~/.emacs.d/undo-tree-history" t))
+  (make-directory "~/.emacs.d/undo-tree-history" t)
+  :config
+  (global-undo-tree-mode)
+  (evil-set-undo-system evil-undo-system))
 
 (use-package neotree
-  :init
-  (global-set-key [f5] 'neotree-toggle)
-  (global-set-key [f8] 'neotree-refresh))
+  :bind (([f5] . neotree-toggle)
+         ([f8] . neotree-refresh)))
 
 ;;(use-package treemacs
 ;;  :bind
@@ -192,15 +207,15 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 ;;        ([f8]   . treemacs-select-directory)))
 
 (use-package pyim
+  :defer t
   :init
   (setq default-input-method "pyim")
-  (global-set-key (kbd "C-\\") 'toggle-input-method))
+  :bind (("C-\\" . toggle-input-method)))
 
 (use-package winner
   :ensure nil
-  ;;:after evil
-  :init
-  (winner-mode 1)
+  :after evil
+  :demand t
   :bind (:map evil-window-map
 	      ("u" . winner-undo)
 	      ("U" . winner-redo))
@@ -208,13 +223,17 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   (winner-mode))
 
 (use-package projectile
+  :demand t
   :init
-  (projectile-global-mode 1)
   (setq projectile-indexing-method 'alien)
-  (setq projectile-enable-caching t))
+  (setq projectile-enable-caching t)
+  :config
+  (projectile-mode 1))
 
 (use-package helm-projectile
-  :init
+  :after projectile
+  :demand t
+  :config
   (helm-projectile-on)
   (define-key helm-map (kbd "TAB") 'helm-next-line)
   (define-key helm-map (kbd "<backtab>") 'helm-previous-line)
@@ -261,30 +280,36 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 ;;(use-package lsp-treemacs :commands lsp-treemacs-errors-list)
 
 ;; optionally if you want to use debugger
-(use-package dap-mode)
+(use-package dap-mode
+  :commands dap-debug)
 ;; (use-package dap-LANGUAGE) to load the dap adapter for your language
 
 ;; optional if you want which-key integration
 (use-package which-key
+    :demand t
     :config
     (which-key-mode))
 
 (use-package yasnippet
-  :init
+  :demand t
+  :config
   (yas-global-mode))
 
 (use-package company
+  :demand t
   :init
-  (add-hook 'after-init-hook 'global-company-mode)
   (setq company-minimum-prefix-length 1
-	company-idle-delay 0.0) ;; default is 0.2
-  (with-eval-after-load 'company
-    (define-key company-active-map [tab] 'company-select-next)
-    (define-key company-active-map [backtab] 'company-select-previous))
+	company-idle-delay 0.0
+        company-global-minibuffer nil
+	)
+  :config
+  (global-company-mode 1)
+  (define-key company-active-map [tab] 'company-select-next)
+  (define-key company-active-map [backtab] 'company-select-previous)
   ;; shell和eshell中禁止补全
   (defun my-shell-mode-setup-function () 
-    (when (fboundp 'company-mode))
-    (company-mode -1))
+    (when (fboundp 'company-mode)
+      (company-mode -1)))
   (add-hook 'shell-mode-hook 'my-shell-mode-setup-function)
   (add-hook 'eshell-mode-hook 'my-shell-mode-setup-function)
   (add-hook 'gud-mode-hook 'my-shell-mode-setup-function))
